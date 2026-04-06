@@ -1,0 +1,11 @@
+[project]
+name = "basic1"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.4.2",
+    "opencv-python>=4.13.0.92",
+    "pynput>=1.8.1",
+]
