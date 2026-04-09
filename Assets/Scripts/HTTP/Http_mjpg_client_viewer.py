@@ -3,6 +3,7 @@ import urllib.request
 import argparse
 import threading
 from pynput import keyboard
+
 import cv2
 import numpy as np
 
@@ -22,9 +23,6 @@ DEFAULT_H = 480
 DEFAULT_Q = 10
 DEFAULT_FPS = 10
 
-# Normalized command values consumed by RemoteController (-1..1).
-CMD_LINEAR = 1.0
-CMD_ANGULAR = 1.0
 CONTROL_SEND_HZ = 30.0
 
 KEY_W = "w"
@@ -64,14 +62,14 @@ def _normalize_key(key) -> str | None:
 
 def _on_key_press(key):
     mapped = _normalize_key(key)
-    if mapped is not None:
+    if mapped is not None: # Not in our mapping -> ignore
         with _KEYS_LOCK:
             _PRESSED_KEYS.add(mapped)
 
 
 def _on_key_release(key):
     mapped = _normalize_key(key)
-    if mapped is not None:
+    if mapped is not None: # Not in our mapping -> ignore
         with _KEYS_LOCK:
             _PRESSED_KEYS.discard(mapped)
 
@@ -83,8 +81,7 @@ def start_keyboard_listener():
 
 
 def stop_keyboard_listener(listener):
-    if listener is not None:
-        listener.stop()
+    listener.stop()
     with _KEYS_LOCK:
         _PRESSED_KEYS.clear()
 
@@ -102,7 +99,6 @@ def parse_args():
     parser.add_argument("--h", type=int, default=DEFAULT_H, help="Requested height")
     parser.add_argument("--q", type=int, default=DEFAULT_Q, help="JPEG quality (1-100)")
     parser.add_argument("--fps", type=int, default=DEFAULT_FPS, help="Requested FPS")
-    parser.add_argument("--control-hz", type=float, default=CONTROL_SEND_HZ, help="Control send rate")
     return parser.parse_args()
 
 
@@ -112,7 +108,7 @@ def control_loop(stop_event: threading.Event, args):
     req_q = min(100, max(1, args.q))
     req_fps = max(1, args.fps)
 
-    send_hz = max(1.0, float(args.control_hz))
+    send_hz = max(1.0, CONTROL_SEND_HZ)
     send_period = 1.0 / send_hz
     prev_r_down = False
 
@@ -129,24 +125,23 @@ def control_loop(stop_event: threading.Event, args):
             reset = 1
         prev_r_down = r_down
 
-        if is_key_down(KEY_X):
-            lvx = lvy = lvz = avy = avz = 0.0
-        elif is_key_down(KEY_W):
-            lvx = CMD_LINEAR
-        elif is_key_down(KEY_S):
-            lvx = -CMD_LINEAR
-        elif is_key_down(KEY_A):
-            avz = -CMD_ANGULAR
-        elif is_key_down(KEY_D):
-            avz = CMD_ANGULAR
-        elif is_key_down(KEY_SPACE):
-            lvz = CMD_LINEAR
-            avy = CMD_ANGULAR
+        # Sum movement vectors to allow simultaneous key presses (Press signal)
+        if is_key_down(KEY_W):
+            lvx += 1.0
+        if is_key_down(KEY_S):
+            lvx -= 1.0
+        if is_key_down(KEY_A):
+            avz -= 1.0
+        if is_key_down(KEY_D):
+            avz += 1.0
+        if is_key_down(KEY_SPACE):
+            lvz += 1.0
+            avy += 1.0
 
         url = (
             f"http://{args.ip}:{args.port}/control?"
             f"w={req_w}&h={req_h}&q={req_q}&fps={req_fps}&"
-            f"lvx={lvx:.3f}&lvy={lvy:.3f}&lvz={lvz:.3f}&avy={avy:.3f}&avz={avz:.3f}&r={reset}"
+            f"lvx={lvx}&lvy={lvy}&lvz={lvz}&avy={avy}&avz={avz}&r={reset}"
         )
 
         try:
@@ -167,8 +162,10 @@ def stream_loop(stop_event: threading.Event, state: dict, state_lock: threading.
 
     frame_count = 0
     fps_timer = time.time()
+    loop_sleep = 1.0 / req_fps
 
     while not stop_event.is_set():
+        # 1) Open stream
         stream_url = (
             f"http://{args.ip}:{args.port}/stream?"
             f"w={req_w}&h={req_h}&q={req_q}&fps={req_fps}&"
@@ -178,7 +175,7 @@ def stream_loop(stop_event: threading.Event, state: dict, state_lock: threading.
         if not cap.isOpened():
             with state_lock:
                 state["status_text"] = f"Stream open failed: {stream_url}"
-            stop_event.wait(0.5)
+            stop_event.wait(loop_sleep)
             continue
 
         with state_lock:
@@ -186,6 +183,7 @@ def stream_loop(stop_event: threading.Event, state: dict, state_lock: threading.
 
         try:
             while not stop_event.is_set():
+                # 2) Receive response frame
                 ok, frame = cap.read()
                 if not ok or frame is None:
                     with state_lock:
@@ -209,7 +207,8 @@ def stream_loop(stop_event: threading.Event, state: dict, state_lock: threading.
         finally:
             cap.release()
 
-        stop_event.wait(0.2)
+        # 3) Keep reconnect cadence
+        stop_event.wait(loop_sleep)
 
 
 def main():
@@ -229,7 +228,7 @@ def main():
     print(f"MJPG stream URL: {stream_url}")
     print(f"HTTP control URL: http://{args.ip}:{args.port}/control")
     print(f"Request params: w={req_w}, h={req_h}, q={req_q}, fps={req_fps}")
-    print("Hold W/A/S/D/SPACE to move, hold X to stop, tap R to reset, tap Q to quit.")
+    print("Hold W/A/S/D/SPACE to move, tap R to reset, tap Q to quit.")
 
     state_lock = threading.Lock()
     state = {
@@ -245,7 +244,6 @@ def main():
 
     stream_thread.start()
     control_thread.start()
-    prev_q_down = False
 
     try:
         while True:
@@ -277,11 +275,10 @@ def main():
 
             cv2.waitKey(1)
             q_down = is_key_down(KEY_Q)
-            if q_down and not prev_q_down:
+            if q_down:
                 break
-            prev_q_down = q_down
 
-            time.sleep(0.001)
+            time.sleep(1.0/req_fps)
     finally:
         stop_event.set()
         stream_thread.join(timeout=1.0)

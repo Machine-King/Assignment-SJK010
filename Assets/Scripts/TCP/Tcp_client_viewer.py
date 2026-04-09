@@ -108,7 +108,6 @@ def parse_args():
     parser.add_argument("--h", type=int, default=DEFAULT_H, help="Requested height")
     parser.add_argument("--q", type=int, default=DEFAULT_Q, help="JPEG quality (1-100)")
     parser.add_argument("--fps", type=int, default=DEFAULT_FPS, help="Requested FPS")
-    parser.add_argument("--control-hz", type=float, default=CONTROL_SEND_HZ, help="Control send rate")
     return parser.parse_args()
 
 
@@ -136,7 +135,7 @@ def control_loop(stop_event: threading.Event, args):
     req_h = max(16, args.h)
     req_q = min(100, max(1, args.q))
     req_fps = max(1, args.fps)
-    send_hz = max(1.0, float(args.control_hz))
+    send_hz = max(1.0, CONTROL_SEND_HZ)
     send_period = 1.0 / send_hz
     sock = None
     prev_r_down = False
