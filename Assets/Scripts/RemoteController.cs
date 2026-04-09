@@ -25,7 +25,7 @@ public class RemoteController : MonoBehaviour
 
     private void moveVelocityRigidbody()
     {
-        float dt = Time.fixedDeltaTime;
+        float dt = Time.deltaTime;
         Vector3 moveDelta = (transform.forward * lvx * forwardSpeed * dt)
                           + (transform.right * lvy * forwardSpeed * dt)
                           + (Vector3.up * lvz * liftSpeed * dt);
@@ -43,11 +43,7 @@ public class RemoteController : MonoBehaviour
         this.lvz = _lvz;
         this.avy = _avy;
         this.avz = _avz;
-        this.movementActive = Mathf.Abs(this.lvx) > 0f
-                           || Mathf.Abs(this.lvy) > 0f
-                           || Mathf.Abs(this.lvz) > 0f
-                           || Mathf.Abs(this.avy) > 0f
-                           || Mathf.Abs(this.avz) > 0f;
+        this.movementActive = true;
     }
 
     public void resetPosition()
