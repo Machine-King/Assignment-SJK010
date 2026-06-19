@@ -86,3 +86,6 @@ See [Assets/Scripts/COMPARISON.md](Assets/Scripts/COMPARISON.md) for a
 HTTP/MJPEG (continuous push) wins on throughput, TCP per-frame trails by
 about 30 % because each frame waits for a request/response cycle, and UDP collapses under
 application-layer fragmentation at high resolutions.
+
+## Protocols
+See [Assets/Scripts/PROTOCOLS.md](Assets/Scripts/PROTOCOLS.md) for a brief explication of the protocols implemented.
