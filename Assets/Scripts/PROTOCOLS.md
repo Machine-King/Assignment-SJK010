@@ -44,4 +44,4 @@ The important difference here is that, unlike TCP where each frame is served as 
 
 In the end the three servers do the same thing: capture a JPEG and apply commands to the car. The difference is in the wrapper.
 
-In [Comparison.md](Comparison.md) you'll find a detailed comparison of the three protocols.
+In [COMPARISON.md](COMPARISON.md) you'll find a detailed comparison of the three protocols.
