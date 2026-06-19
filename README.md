@@ -89,3 +89,6 @@ application-layer fragmentation at high resolutions.
 
 ## Protocols
 See [Assets/Scripts/PROTOCOLS.md](Assets/Scripts/PROTOCOLS.md) for a brief explication of the protocols implemented.
+
+## Author
+Carlos Luis Rodríguez Brito

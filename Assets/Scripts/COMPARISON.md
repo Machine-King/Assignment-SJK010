@@ -79,3 +79,6 @@ becomes smaller, fragmentation disappears, and UDP keeps up.
   doesn't apply. That's why all three implementations keep a separate
   control channel and why the UDP control channel works even when the
   UDP video channel performance is really bad with high resulation + FPS images.
+
+## Author
+Carlos Luis Rodríguez Brito
